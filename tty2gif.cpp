@@ -180,10 +180,9 @@ int main(int argc, char *argv[])
 }
 //------------------------------------------------------------------------------
 #include <vector>
-#include <Magick++.h>
+#include <MagickWand/MagickWand.h>
 #include <X11/Xlib.h>
 using namespace std;
-using namespace Magick;
 //------------------------------------------------------------------------------
 Window GetWindowID()
 {
@@ -203,7 +202,9 @@ void SaveReplay(const char *fileName, int delay)
     fprintf(stdout,"\e[1;1H\e[2J");
     fflush(stdout);
 
-    InitializeMagick(pwd);
+    MagickWandGenesis();
+    MagickWand *wand = NULL;
+    wand = NewMagickWand();
 
     int  num;
     char buff[BUFLEN];
@@ -211,8 +212,6 @@ void SaveReplay(const char *fileName, int delay)
     TCmdInfo prev,cur;
 
     sprintf(str,"x:0x%lx",GetWindowID());
-
-    vector<Image> frame;
 
     while(1)
     {
@@ -229,21 +228,19 @@ void SaveReplay(const char *fileName, int delay)
         fwrite(buff,num,1,stdout);
         fflush(stdout);
 
-        Image im;
-        im.read(str);
+        MagickReadImage(wand,str);
 
 #define diff(a,b) ( (a.tv_sec-b.tv_sec)*1e6 + a.tv_usec-b.tv_usec )
-        if(frame.size()>0)
-            im.animationDelay( ( diff(cur.tm,prev.tm) + delay*1e3 ) / (1e6/1e2) );
+        MagickSetImageDelay(wand, ( diff(cur.tm,prev.tm) + delay*1e3 ) / (1e6/1e2));
 
         prev = cur;
-        frame.push_back(im);
     }
 
-    assert(frame.size()>0);
+    assert(MagickGetNumberImages(wand)>0);
 
-    vector<Image> opt;
-    optimizeImageLayers(&opt,frame.begin(),frame.end());
-    writeImages(opt.begin(),opt.end(),fileName);
+    MagickOptimizeImageLayers(wand);
+    MagickWriteImage(wand,fileName);
+    if(wand)wand = DestroyMagickWand(wand);
+    MagickWandTerminus();
 }
 //------------------------------------------------------------------------------

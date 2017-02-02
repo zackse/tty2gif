@@ -1,6 +1,6 @@
 CXX     = g++
-CFLAGS	= -O2 $(shell pkg-config --cflags Magick++)
-LIBS    = $(shell pkg-config --libs Magick++) -lX11
+CFLAGS  = -g -O2 $(shell pkg-config --cflags MagickWand)
+LIBS    = $(shell pkg-config --libs MagickWand) -lX11
 TARGETS	= tty2gif
 
 UNAME	= $(shell uname -s)
