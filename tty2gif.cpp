@@ -192,6 +192,7 @@ Window GetWindowID()
     Window window;
     int revert;
     XGetInputFocus(dpy,&window,&revert);
+    XCloseDisplay(dpy);
     return window;
 }
 //------------------------------------------------------------------------------
@@ -238,6 +239,10 @@ void SaveReplay(const char *fileName, int delay)
 
         prev = cur;
         frame.push_back(im);
+
+        // ugh. work around some race with ImageMagick getting access to the
+        // X-window (https://github.com/z24/tty2gif/issues/1)
+        usleep(50000);
     }
 
     assert(frame.size()>0);
