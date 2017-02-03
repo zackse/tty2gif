@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
 //------------------------------------------------------------------------------
 #include <vector>
 #include <Magick++.h>
+#include <Magick++/Exception.h>
 #include <X11/Xlib.h>
 using namespace std;
 using namespace Magick;
@@ -231,7 +232,29 @@ void SaveReplay(const char *fileName, int delay)
         fflush(stdout);
 
         Image im;
-        im.read(str);
+        int tries = 0;
+
+        // ugh. work around some race with ImageMagick getting access to the
+        // X-window (https://github.com/z24/tty2gif/issues/1)
+CAPTURE_IMAGE:
+        try {
+            im.read(str);
+        }
+        catch (WarningImage &w) {
+            fprintf(stderr, "\n\n\nError retrieving X-window image after %d tries: %s\n\n\n\n", 1+tries, w.what());
+            if (tries < 3) {
+                usleep(100000);
+                ++tries;
+                goto CAPTURE_IMAGE;
+            }
+            else {
+                fprintf(stderr, "\n\n\nFailed after 3 attempts, aborting\n\n");
+                exit(1);
+            }
+        }
+        catch (...) {
+            throw;
+        }
 
 #define diff(a,b) ( (a.tv_sec-b.tv_sec)*1e6 + a.tv_usec-b.tv_usec )
         if(frame.size()>0)
@@ -239,10 +262,6 @@ void SaveReplay(const char *fileName, int delay)
 
         prev = cur;
         frame.push_back(im);
-
-        // ugh. work around some race with ImageMagick getting access to the
-        // X-window (https://github.com/z24/tty2gif/issues/1)
-        usleep(50000);
     }
 
     assert(frame.size()>0);
